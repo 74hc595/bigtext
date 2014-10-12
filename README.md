@@ -1,6 +1,7 @@
 # Big Text Generator
 
 Generates big pixelated text using the Unicode Braille Patterns (U+2800–U+28FF).
+
 ⣶⠀⠀⠀⠀⠶⣶⠶⠀⣶⠀⣠⡶⠀⣶⠶⠶⠶⠀⠀⠀⠶⣶⠶⠀⣶⠀⠀⣶⠀⠶⣶⠶⠀⣴⠶⠶⣦<br/>
 ⣿⠀⠀⠀⠀⠀⣿⠀⠀⣿⢾⣏⠀⠀⣿⠶⠶⠀⠀⠀⠀⠀⣿⠀⠀⣿⠶⠶⣿⠀⠀⣿⠀⠀⠻⠶⠶⣦<br/>
 ⠿⠶⠶⠶⠀⠶⠿⠶⠀⠿⠀⠙⠷⠀⠿⠶⠶⠶⠀⠀⠀⠀⠿⠀⠀⠿⠀⠀⠿⠀⠶⠿⠶⠀⠻⠶⠶⠟<br/>
@@ -50,6 +51,6 @@ However, proportionally-spaced fonts are supported. To indicate that a character
 
 Made by Matt Sarnoff ([@autorelease](http://twitter.com/autorelease)).
 
-Inspiration from [drawille](https://github.com/asciimoo/drawille) by Adam Tauber.
+Inspiration from [drawille](https://github.com/asciimoo/drawille) by Adam Tauber and [figlet](http://www.figlet.org) which is older than the internet.
 
 The fonts `atari-st`, `c64`, `chicago`, and `vga` come from Damien Guard's articles ["Typography in 8 Bits"](http://damieng.com/blog/2011/02/20/typography-in-8-bits-system-fonts) and ["Typography in 16 Bits"](http://damieng.com/blog/2011/03/27/typography-in-16-bits-system-fonts). They have been modified slightly to look nicer when converted to Braille.
