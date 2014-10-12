@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+	<title>Make Big Text</title>
+  <script src="bigtext.js"></script>
+  <script>
+
+var fonts = [
+  "arcade",
+  "atari-st",
+  "blocky",
+  "blocky-large",
+  "c64",
+  "chicago",
+  "comic-sans",
+  "comic-sans-large",
+  "courier",
+  "courier-small",
+  "helvetica",
+  "helvetica-small",
+  "impact",
+  "medium",
+  "papyrus",
+  "skia",
+  "times",
+  "tiny",
+  "tiny-mono",
+  "vga"
+];
+
+var g = new BigText.Generator();
+
+function populateFontMenu() {
+  var fontMenu = document.getElementById("font");
+  for (var i = 0; i < fonts.length; i++) {
+    var option = document.createElement("option");
+    option.textContent = fonts[i];
+    option.value = fonts[i];
+    fontMenu.appendChild(option);
+  }
+  // set default
+  document.getElementById("font").value = "c64";
+  changeFont();
+}
+
+function changeFont() {
+  var fontMenu = document.getElementById("font");
+  g.setFont(new BigText.Font("fonts/"+fontMenu.value+".png", makeBigText));
+}
+
+function makeBigText() {
+  var input = document.getElementById("input").value;
+  var output = (input.length > 0) ? g.renderString(input) : "";
+  var outputArea = document.getElementById("output");
+  var display = (output.length > 0) ? "block" : "none";
+  outputArea.textContent = output;
+  outputArea.style.display = display;
+}
+
+function select(e) {
+  selectTextInElement(e.target);
+}
+
+function deselect(e) {
+  e.target.removeAttribute("contentEditable");
+}
+
+function selectTextInElement(el) {
+  el.setAttribute("contentEditable", true);
+  var selection = window.getSelection();
+  var range = document.createRange();
+  range.selectNode(el.firstChild);
+  selection.removeAllRanges();
+  selection.addRange(range);
+}
+
+  </script>
+</head>
+
+<body onload="populateFontMenu();">
+<pre>
+⣦⣀⣀⣴⠀⣠⡶⢶⣄⠀⣶⠀⣠⡶⠀⣶⠶⠶⠶⠀⠀⠀⣶⠶⠶⣦⠀⠶⣶⠶⠀⣴⠶⠶⣦⠀⠀⠀⠶⣶⠶⠀⣶⠶⠶⠶⠀⢶⡄⢠⡶⠀⠶⣶⠶⠀
+⣿⠙⠋⣿⠀⣿⠶⠶⣿⠀⣿⢾⣏⠀⠀⣿⠶⠶⠀⠀⠀⠀⣿⠶⠶⣏⠀⠀⣿⠀⠀⣿⠀⠶⣶⠀⠀⠀⠀⣿⠀⠀⣿⠶⠶⠀⠀⠀⣿⣿⠀⠀⠀⣿⠀⠀
+⠿⠀⠀⠿⠀⠿⠀⠀⠿⠀⠿⠀⠙⠷⠀⠿⠶⠶⠶⠀⠀⠀⠿⠶⠶⠟⠀⠶⠿⠶⠀⠻⠶⠶⠟⠀⠀⠀⠀⠿⠀⠀⠿⠶⠶⠶⠀⠾⠃⠘⠷⠀⠀⠿⠀⠀
+</pre>
+<p>
+Create big text using Unicode Braille characters
+</p>
+<p>Choose a font: <select id="font" onchange="changeFont();"></select>
+<p>
+<textarea id="input" cols=40 rows=5 placeholder="Enter your text here"></textarea>
+<pre id="output" style="display:none;">
+</pre>
+<p><a href="http://www.msarnoff.org">msarnoff.org</a><br/>
+<a href="http://www.twitter.com/autorelease">@autorelease</a><br/>
+<a href="http://www.github.com/74hc595/bigtext">source codez</a>
+</p>
+<script>
+populateFontMenu();
+var inputArea = document.getElementById("input");
+inputArea.addEventListener('input', makeBigText);
+var outputArea = document.getElementById("output");
+outputArea.addEventListener("click", select);
+outputArea.addEventListener("blur", deselect);
+</script>
+</body>
+</html>

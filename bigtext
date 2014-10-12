@@ -1,0 +1,310 @@
+#!/usr/bin/env python
+# Generates big text using Unicode Braille pattern characters.
+# Matt Sarnoff (msarnoff.org)
+# October 9, 2014
+
+import sys
+import os
+import stat
+import argparse
+import subprocess
+
+VERSION = '1.0'
+AUTHOR = 'Matt Sarnoff (msarnoff.org)'
+FONTDIR = '~/.bigtext'
+
+class Font(object):
+
+  # Font loading constants
+  FONT_CHARS_PER_ROW = 16
+  FONT_NUM_ROWS = 6
+  BRAILLE_DOTS_WIDE = 2
+  BRAILLE_DOTS_HIGH = 4
+  BIT_OFFSETS = [(0,0), (0,1), (0,2), (1,0), (1,1), (1,2), (0,3), (1,3)]
+  PIXEL_ON_THRESHOLD = 32
+  WIDTH_MARKER_THRESHOLD = 224
+
+  def __init__(self):
+    self.glyphs = []
+    self.glyph_offset = 0x20  # first represented character is space
+
+  def rows_per_glyph(self):
+    return len(self.glyphs[0])
+
+  def glyph_for_character(self, c):
+    ascii_val = ord(c) - self.glyph_offset
+    if ascii_val >= 0 and ascii_val < len(self.glyphs):
+      return self.glyphs[ascii_val]
+    else:
+      return None
+
+  class FontLoadingError(Exception):
+    pass
+
+  @classmethod
+  def from_image(cls, imgpath):
+    try:
+      from PIL import Image
+      img = Image.open(imgpath)
+      img.load()
+      # convert to grayscale
+      img = img.convert(mode="L")
+      # check dimensions
+      pixel_width = img.size[0]
+      required_width_multiple = cls.FONT_CHARS_PER_ROW*cls.BRAILLE_DOTS_WIDE
+      if pixel_width % required_width_multiple != 0:
+        raise cls.FontLoadingError('image width (%d) is not a multiple of %d'
+            % (pixel_width, required_width_multiple))
+      pixel_height = img.size[1]
+      required_height_multiple = cls.FONT_NUM_ROWS * cls.BRAILLE_DOTS_HIGH
+      if pixel_height % required_height_multiple != 0:
+        raise cls.FontLoadingError('image height (%d) is not a multiple of %d'
+            % (pixel_height, required_height_multiple))
+      glyph_bitmap_width = pixel_width / cls.FONT_CHARS_PER_ROW
+      glyph_bitmap_height = pixel_height / cls.FONT_NUM_ROWS
+      # read glyphs
+      font = cls()
+      for by in range(0, pixel_height, glyph_bitmap_height):
+        for bx in range(0, pixel_width, glyph_bitmap_width):
+          font.glyphs.append(cls.glyph_from_subimage(img,
+            bx, by, glyph_bitmap_width, glyph_bitmap_height))
+      return font
+    except ImportError:
+      exit_with_error(1, 'Pillow is required for custom font support.')
+    except IOError:
+      raise
+
+  @classmethod
+  def glyph_from_subimage(cls, img, offset_x, offset_y, w, h):
+    glyph = [u''] * (h/cls.BRAILLE_DOTS_HIGH)
+    # first scan the whole bitmap to determine the glyph width
+    # (can be specified with a gray pixel)
+    glyph_width = w
+    for y in range(offset_y, offset_y+h):
+      for x in range(offset_x, offset_x+w):
+        pixel = img.getpixel((x, y))
+        if pixel > cls.PIXEL_ON_THRESHOLD and \
+          pixel <= cls.WIDTH_MARKER_THRESHOLD:
+          glyph_width = min(glyph_width, x-offset_x)
+    # width must be a multiple of the number of columns in a Braille character
+    if glyph_width % cls.BRAILLE_DOTS_WIDE != 0:
+      raise cls.FontLoadingError('width %d specified for glyph at (%d,%d) '
+          'is not a multiple of %d' % (
+            glyph_width, offset_x, offset_y, cls.BRAILLE_DOTS_WIDE))
+    row = 0
+    for y in range(offset_y, offset_y+h, cls.BRAILLE_DOTS_HIGH):
+      for x in range(offset_x, offset_x+glyph_width, cls.BRAILLE_DOTS_WIDE):
+        glyph[row] += cls.braille_from_subimage(img, x, y)
+      row += 1
+    return tuple(glyph)
+    
+  @classmethod
+  def braille_from_subimage(cls, img, x, y):
+    code_point = 0x2800
+    for bit, offset in enumerate(cls.BIT_OFFSETS):
+      pixel = img.getpixel((x+offset[0], y+offset[1]))
+      code_point |= (1 << bit) if pixel < cls.PIXEL_ON_THRESHOLD else 0
+    return unichr(code_point)
+
+
+def render_string(font, string):
+  rows = [''] * font.rows_per_glyph()
+  rowidx = 0
+  for c in string:
+    if c != '\n':
+      glyph = font.glyph_for_character(c)
+      if glyph is not None:
+        for r, braille_chars in enumerate(glyph):
+          rows[rowidx+r] += braille_chars
+    else:
+      rows.extend([''] * font.rows_per_glyph())
+      rowidx += font.rows_per_glyph()
+  # strip trailing blanks from each row
+  return '\n'.join(row.rstrip(u'\u2800') for row in rows)
+
+def path_for_font_name(fontname):
+  fn = fontname
+  if not fn.endswith('.png'):
+    fn += '.png'
+  if not os.path.isfile(fn):
+    fn = os.path.expanduser(os.path.join(FONTDIR, fn))
+    if not os.path.isfile(fn):
+      raise IOError('font \'%s\' not found' % fontname)
+  return fn
+
+def exit_with_error(code, msg):
+  print >> sys.stderr, 'error:', msg
+  sys.exit(code)
+
+def main(default_font_class):
+  parser = argparse.ArgumentParser(
+    description='Generates bitmap text using Unicode Braille characters.',
+    epilog='If no text is specified, it will be read from standard input.\n\n'
+    'fontname should be the name of a PNG file (extension optional) in '
+    'either the current directory or %s. If not specified, the built-in font '
+    'is used.' % (FONTDIR))
+  parser.add_argument('-v', '--version', action='version',
+      version='%(prog)s version '+VERSION+' by '+AUTHOR)
+  parser.add_argument('-f', '--font',
+      metavar='font',
+      help='specify a font')
+  parser.add_argument('-c', '--clipboard',
+      action='store_true',
+      help='copy the output to the clipboard (Mac OS X only)')
+  parser.add_argument('-g', '--glyphs',
+      action='store_true',
+      help='display all glyphs in the selected font')
+  parser.add_argument('-d', '--dump',
+      action='store_true',
+      help='dump the hex values of all glyphs (Python syntax)')
+  parser.add_argument('text',
+      metavar='text',
+      nargs=argparse.REMAINDER,
+      help='text to render (ASCII only)')
+  
+  args = parser.parse_args()
+  font = None
+  if args.font is not None:
+    try:
+      fontpath = path_for_font_name(args.font)
+      font = Font.from_image(fontpath)
+    except IOError, e:
+      exit_with_error(3, e)
+  else:
+    font = default_font_class()
+
+  if args.dump:
+    lines = ['%s, # %#x' % (repr(glyph), idx+font.glyph_offset) for idx, glyph in enumerate(font.glyphs)]
+    print '[\n'+'\n'.join(lines)+'\n]'
+    return 0
+
+  text = ''
+  if args.glyphs:
+    for c in range(0x20,0x80):
+      text += chr(c)
+      if c % Font.FONT_CHARS_PER_ROW == Font.FONT_CHARS_PER_ROW-1 and c < 0x7F:
+        text += '\n'
+  elif not args.text:
+    text = sys.stdin.read().rstrip()
+  else:
+    text = ' '.join(args.text)
+
+  if len(text) > 0:
+    output = render_string(font, text).encode('UTF8')
+    outfd = None
+    if not args.clipboard:
+      output += '\n'
+      outfd = sys.stdout
+    else:
+      # OS X clipboard
+      p = subprocess.Popen('pbcopy', stdin=subprocess.PIPE)
+      outfd = p.stdin
+    outfd.write(output)
+  return 0
+
+
+
+class DefaultFont(Font):
+  def __init__(self):
+    self.glyph_offset = 0x20
+    self.glyphs = [
+(u'\u2800\u2800\u2800\u2800', u'\u2800\u2800\u2800\u2800'), # 0x20
+(u'\u2800\u28b8\u2847\u2800', u'\u2800\u2820\u2804\u2800'), # 0x21
+(u'\u2838\u2807\u2838\u2807', u'\u2800\u2800\u2800\u2800'), # 0x22
+(u'\u28bc\u2867\u28bc\u2867', u'\u2839\u280f\u2839\u280f'), # 0x23
+(u'\u28b4\u28db\u2852\u2800', u'\u2812\u2836\u280b\u2800'), # 0x24
+(u'\u281b\u28e0\u281e\u2800', u'\u281e\u2801\u2836\u2800'), # 0x25
+(u'\u28ba\u28ed\u2817\u2800', u'\u283b\u2824\u283f\u2805'), # 0x26
+(u'\u2800\u2820\u281e\u2801', u'\u2800\u2800\u2800\u2800'), # 0x27
+(u'\u2800\u28f4\u280b\u2800', u'\u2800\u2819\u2826\u2800'), # 0x28
+(u'\u2800\u2819\u28e6\u2800', u'\u2800\u2834\u280b\u2800'), # 0x29
+(u'\u28d0\u28e6\u28f4\u2842', u'\u2810\u280b\u2819\u2802'), # 0x2a
+(u'\u28c0\u28f6\u28c0\u2800', u'\u2800\u281b\u2800\u2800'), # 0x2b
+(u'\u2800\u2800\u2800\u2800', u'\u2880\u2876\u2800\u2800'), # 0x2c
+(u'\u28c0\u28c0\u28c0\u2800', u'\u2800\u2800\u2800\u2800'), # 0x2d
+(u'\u2800\u2800\u2800\u2800', u'\u2800\u2836\u2800\u2800'), # 0x2e
+(u'\u2800\u2880\u2874\u2802', u'\u2834\u280b\u2800\u2800'), # 0x2f
+(u'\u28fe\u2869\u28f7\u2800', u'\u283b\u2824\u281f\u2800'), # 0x30
+(u'\u2820\u28ff\u2800\u2800', u'\u2824\u283f\u2824\u2800'), # 0x31
+(u'\u281a\u2889\u2877\u2800', u'\u283e\u2825\u2824\u2800'), # 0x32
+(u'\u281a\u28c9\u2877\u2800', u'\u2832\u2824\u281f\u2800'), # 0x33
+(u'\u28c0\u2834\u28ff\u2800', u'\u2809\u2809\u283f\u2801'), # 0x34
+(u'\u283f\u282d\u28cd\u2800', u'\u2832\u2824\u281f\u2800'), # 0x35
+(u'\u28fe\u28c9\u2853\u2800', u'\u283b\u2824\u281f\u2800'), # 0x36
+(u'\u281b\u28e9\u281f\u2800', u'\u2800\u283f\u2800\u2800'), # 0x37
+(u'\u28be\u28c9\u2877\u2800', u'\u283b\u2824\u281f\u2800'), # 0x38
+(u'\u28be\u28c9\u28f7\u2800', u'\u2832\u2824\u281f\u2800'), # 0x39
+(u'\u2800\u2824\u2800\u2800', u'\u2800\u2812\u2800\u2800'), # 0x3a
+(u'\u2800\u2824\u2800\u2800', u'\u2880\u2876\u2800\u2800'), # 0x3b
+(u'\u28e0\u281e\u2809\u2800', u'\u2808\u2833\u2824\u2800'), # 0x3c
+(u'\u2824\u2824\u2824\u2800', u'\u2809\u2809\u2809\u2800'), # 0x3d
+(u'\u2809\u2833\u28c4\u2800', u'\u2824\u281e\u2801\u2800'), # 0x3e
+(u'\u281a\u2889\u2877\u2800', u'\u2800\u282d\u2800\u2800'), # 0x3f
+(u'\u28fe\u28a9\u28f7\u2800', u'\u283b\u2824\u2814\u2800'), # 0x40
+(u'\u28f4\u28db\u28e6\u2800', u'\u283f\u2800\u283f\u2800'), # 0x41
+(u'\u28ff\u28c9\u2877\u2800', u'\u283f\u2824\u281f\u2800'), # 0x42
+(u'\u28fe\u2809\u2813\u2800', u'\u283b\u2824\u2816\u2800'), # 0x43
+(u'\u28ff\u2819\u28e6\u2800', u'\u283f\u2834\u280b\u2800'), # 0x44
+(u'\u28ff\u28c9\u2809\u2800', u'\u283f\u2824\u2824\u2800'), # 0x45
+(u'\u28ff\u28c9\u2809\u2800', u'\u283f\u2800\u2800\u2800'), # 0x46
+(u'\u28fe\u2889\u28d3\u2800', u'\u283b\u2824\u281f\u2800'), # 0x47
+(u'\u28ff\u28c0\u28ff\u2800', u'\u283f\u2800\u283f\u2800'), # 0x48
+(u'\u2808\u28ff\u2801\u2800', u'\u2820\u283f\u2804\u2800'), # 0x49
+(u'\u2800\u28b9\u284f\u2800', u'\u2832\u283c\u2803\u2800'), # 0x4a
+(u'\u28ff\u2874\u280b\u2800', u'\u283f\u2819\u2826\u2800'), # 0x4b
+(u'\u28ff\u2800\u2800\u2800', u'\u283f\u2824\u2824\u2800'), # 0x4c
+(u'\u28ff\u28a6\u28be\u2847', u'\u283f\u2800\u2838\u2807'), # 0x4d
+(u'\u28ff\u28e6\u28ff\u2800', u'\u283f\u2808\u283f\u2800'), # 0x4e
+(u'\u28fe\u2809\u28f7\u2800', u'\u283b\u2824\u281f\u2800'), # 0x4f
+(u'\u28ff\u28c9\u2877\u2800', u'\u283f\u2800\u2800\u2800'), # 0x50
+(u'\u28fe\u2809\u28f7\u2800', u'\u2819\u2832\u282f\u2800'), # 0x51
+(u'\u28ff\u28c9\u2877\u2800', u'\u283f\u2819\u2826\u2800'), # 0x52
+(u'\u28be\u28c9\u2853\u2800', u'\u2832\u2824\u281f\u2800'), # 0x53
+(u'\u2809\u28ff\u2809\u2800', u'\u2800\u283f\u2800\u2800'), # 0x54
+(u'\u28ff\u2800\u28ff\u2800', u'\u283b\u2824\u281f\u2800'), # 0x55
+(u'\u28ff\u2800\u28ff\u2800', u'\u2819\u2836\u280b\u2800'), # 0x56
+(u'\u28ff\u2880\u28b8\u2847', u'\u283f\u280b\u283b\u2807'), # 0x57
+(u'\u283b\u28e4\u281f\u2800', u'\u283e\u2809\u2837\u2800'), # 0x58
+(u'\u28bf\u28c0\u287f\u2800', u'\u2800\u283f\u2800\u2800'), # 0x59
+(u'\u2809\u28e9\u281f\u2800', u'\u283e\u2825\u2824\u2800'), # 0x5a
+(u'\u2800\u28ff\u2809\u2800', u'\u2800\u283f\u2824\u2800'), # 0x5b
+(u'\u2832\u28c4\u2800\u2800', u'\u2800\u2808\u2833\u2804'), # 0x5c
+(u'\u2800\u2809\u28ff\u2800', u'\u2800\u2824\u283f\u2800'), # 0x5d
+(u'\u2834\u281b\u2826\u2800', u'\u2800\u2800\u2800\u2800'), # 0x5e
+(u'\u2800\u2800\u2800\u2800', u'\u2824\u2824\u2824\u2824'), # 0x5f
+(u'\u2808\u2833\u2804\u2800', u'\u2800\u2800\u2800\u2800'), # 0x60
+(u'\u2820\u2824\u28c4\u2800', u'\u283a\u282d\u283f\u2800'), # 0x61
+(u'\u28f6\u28c0\u2840\u2800', u'\u283f\u2824\u281f\u2800'), # 0x62
+(u'\u28e0\u2824\u2804\u2800', u'\u283b\u2824\u2804\u2800'), # 0x63
+(u'\u2880\u28c0\u28f6\u2800', u'\u283b\u2824\u283f\u2800'), # 0x64
+(u'\u28e0\u2824\u28c4\u2800', u'\u283b\u282d\u280d\u2800'), # 0x65
+(u'\u2880\u28f4\u28d2\u2800', u'\u2800\u283f\u2800\u2800'), # 0x66
+(u'\u28e0\u2824\u28e4\u2800', u'\u28d9\u28d2\u287f\u2800'), # 0x67
+(u'\u28f6\u28c0\u2840\u2800', u'\u283f\u2800\u283f\u2800'), # 0x68
+(u'\u2880\u28d2\u2800\u2800', u'\u2820\u283f\u2804\u2800'), # 0x69
+(u'\u2800\u2800\u28d2\u2800', u'\u2880\u28c0\u287f\u2800'), # 0x6a
+(u'\u28f6\u2880\u2840\u2800', u'\u283f\u2819\u2826\u2800'), # 0x6b
+(u'\u2810\u28f6\u2800\u2800', u'\u2820\u283f\u2804\u2800'), # 0x6c
+(u'\u28e4\u28c0\u28e4\u2840', u'\u283f\u2819\u2839\u2807'), # 0x6d
+(u'\u28e4\u2824\u28c4\u2800', u'\u283f\u2800\u283f\u2800'), # 0x6e
+(u'\u28e0\u2824\u28c4\u2800', u'\u283b\u2824\u281f\u2800'), # 0x6f
+(u'\u28e4\u2824\u28c4\u2800', u'\u28ff\u2812\u280b\u2800'), # 0x70
+(u'\u28e0\u2824\u28e4\u2800', u'\u2819\u2812\u28ff\u2800'), # 0x71
+(u'\u28e4\u2824\u28c4\u2800', u'\u283f\u2800\u2800\u2800'), # 0x72
+(u'\u28e0\u2824\u2824\u2800', u'\u282c\u282d\u2817\u2800'), # 0x73
+(u'\u2824\u28f6\u2824\u2800', u'\u2800\u283b\u2824\u2800'), # 0x74
+(u'\u28e4\u2800\u28e4\u2800', u'\u283b\u2824\u283f\u2800'), # 0x75
+(u'\u28e4\u2800\u28e4\u2800', u'\u2819\u2836\u280b\u2800'), # 0x76
+(u'\u28e4\u2880\u28a0\u2844', u'\u2839\u281f\u283f\u2801'), # 0x77
+(u'\u28a4\u28c0\u2864\u2800', u'\u2834\u281b\u2826\u2800'), # 0x78
+(u'\u28e4\u2800\u28e4\u2800', u'\u28d9\u28f2\u281f\u2800'), # 0x79
+(u'\u2824\u28a4\u2864\u2800', u'\u2834\u282f\u2824\u2800'), # 0x7a
+(u'\u2880\u287e\u2809\u2800', u'\u2800\u283b\u2824\u2800'), # 0x7b
+(u'\u2800\u28ff\u2800\u2800', u'\u2800\u28ff\u2800\u2800'), # 0x7c
+(u'\u2800\u2809\u28b7\u2840', u'\u2800\u2824\u281f\u2800'), # 0x7d
+(u'\u2834\u281b\u2836\u280b', u'\u2800\u2800\u2800\u2800'), # 0x7e
+(u'\u2800\u2800\u2800\u2800', u'\u2800\u2800\u2800\u2800'), # 0x7f
+]
+
+if __name__ == '__main__':
+  sys.exit(main(DefaultFont))
