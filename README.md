@@ -16,7 +16,7 @@ Generates big pixelated text using the Unicode Braille Patterns (U+2800–U+28FF
 ⢸⣿⡇⢸⣿⡇⢸⣿⡇⢸⣿⡇⠀⠀⢸⣿⡇⠀⠀⠈⣿⣇⣿⡏⠀⢸⣿⡇⠀⠀⢸⣿⠘⣿⣿⡇⠀⠀⠀⢸⣿⡇⠀⢸⣿⡇⢸⣿⡇⢸⣿⡇⢰⣶⡎⣿⣿<br/>
 ⠈⠻⠿⠿⠟⠁⠸⠿⠇⠸⠿⠇⠀⠀⠸⠿⠿⠿⠇⠀⠿⠿⠿⠇⠀⠸⠿⠿⠿⠇⠸⠿⠀⠹⠿⠇⠀⠀⠀⠸⠿⠇⠀⠸⠿⠇⠸⠿⠇⠸⠿⠇⠈⠻⠿⠿⠋<br/>
 
-[TRY IT HERE](bigtext.html)
+[TRY IT HERE](https://rawgit.com/74hc595/bigtext/master/bigtext.html)
 
 ## Command line
 
