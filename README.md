@@ -16,6 +16,8 @@ Generates big pixelated text using the Unicode Braille Patterns (U+2800–U+28FF
 ⢸⣿⡇⢸⣿⡇⢸⣿⡇⢸⣿⡇⠀⠀⢸⣿⡇⠀⠀⠈⣿⣇⣿⡏⠀⢸⣿⡇⠀⠀⢸⣿⠘⣿⣿⡇⠀⠀⠀⢸⣿⡇⠀⢸⣿⡇⢸⣿⡇⢸⣿⡇⢰⣶⡎⣿⣿<br/>
 ⠈⠻⠿⠿⠟⠁⠸⠿⠇⠸⠿⠇⠀⠀⠸⠿⠿⠿⠇⠀⠿⠿⠿⠇⠀⠸⠿⠿⠿⠇⠸⠿⠀⠹⠿⠇⠀⠀⠀⠸⠿⠇⠀⠸⠿⠇⠸⠿⠇⠸⠿⠇⠈⠻⠿⠿⠋<br/>
 
+[TRY IT HERE](http://www.msarnoff.org/bigtext/)
+
 ## Command line
 
 `bigtext` is a Python script that accepts a string via command-line argument or standard input.
