@@ -16,14 +16,14 @@ Generates big pixelated text using the Unicode Braille Patterns (U+2800–U+28FF
 ⢸⣿⡇⢸⣿⡇⢸⣿⡇⢸⣿⡇⠀⠀⢸⣿⡇⠀⠀⠈⣿⣇⣿⡏⠀⢸⣿⡇⠀⠀⢸⣿⠘⣿⣿⡇⠀⠀⠀⢸⣿⡇⠀⢸⣿⡇⢸⣿⡇⢸⣿⡇⢰⣶⡎⣿⣿<br/>
 ⠈⠻⠿⠿⠟⠁⠸⠿⠇⠸⠿⠇⠀⠀⠸⠿⠿⠿⠇⠀⠿⠿⠿⠇⠀⠸⠿⠿⠿⠇⠸⠿⠀⠹⠿⠇⠀⠀⠀⠸⠿⠇⠀⠸⠿⠇⠸⠿⠇⠸⠿⠇⠈⠻⠿⠿⠋<br/>
 
-[TRY IT HERE]()
+[TRY IT HERE](bigtext.html)
 
 ## Command line
 
 `bigtext` is a Python script that accepts a string via command-line argument or standard input.
 The string is rendered into large bitmapped characters and written to standard output.
 
-- `-f font`: specify a custom font. Fonts are defined in PNG files and the [Pillow](https://pypi.python.org/pypi/Pillow) library is required to read them. Several fonts are included in this repository; to use them, place them in a directory called `~/.bigfont`. If no font is specified, the built-in font is used.
+- `-f font`: specify a custom font. Fonts are defined in PNG files and the [Pillow](https://pypi.python.org/pypi/Pillow) library is required to read them. Several fonts are included in this repository; to use them, place them in a directory called `~/.bigtext`. If no font is specified, the built-in font is used.
 - `-g`: print out all glyphs in the specified font. Only ASCII input is supported at this time.
 - `-c`: Mac OS X only: write the output to the clipboard instead of standard output.
 
@@ -44,7 +44,7 @@ However, proportionally-spaced fonts are supported. To indicate that a character
 
 ## BUT WAIT THERE'S MORE
 
-[BitmapFontGenerator]() is a Mac OS X application that can create a PNG bitmap from any font on your system.
+[BitmapFontGenerator](BitmapFontGenerator/) is a Mac OS X application that can create a PNG bitmap from any font on your system.
 
 ## Credits
 
