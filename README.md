@@ -16,8 +16,6 @@ Generates big pixelated text using the Unicode Braille Patterns (U+2800–U+28FF
 ⢸⣿⡇⢸⣿⡇⢸⣿⡇⢸⣿⡇⠀⠀⢸⣿⡇⠀⠀⠈⣿⣇⣿⡏⠀⢸⣿⡇⠀⠀⢸⣿⠘⣿⣿⡇⠀⠀⠀⢸⣿⡇⠀⢸⣿⡇⢸⣿⡇⢸⣿⡇⢰⣶⡎⣿⣿<br/>
 ⠈⠻⠿⠿⠟⠁⠸⠿⠇⠸⠿⠇⠀⠀⠸⠿⠿⠿⠇⠀⠿⠿⠿⠇⠀⠸⠿⠿⠿⠇⠸⠿⠀⠹⠿⠇⠀⠀⠀⠸⠿⠇⠀⠸⠿⠇⠸⠿⠇⠸⠿⠇⠈⠻⠿⠿⠋<br/>
 
-[TRY IT HERE](https://rawgit.com/74hc595/bigtext/master/bigtext.html)
-
 ## Command line
 
 `bigtext` is a Python script that accepts a string via command-line argument or standard input.
@@ -29,7 +27,7 @@ The string is rendered into large bitmapped characters and written to standard o
 
 ## Web
 
-`bigtext.html`/`bigtext.js` is a Web-based implementation. The Canvas API is used to read the same font files used by the Python script.
+`bigtext.html`/`bigtext.js` is a Web-based implementation. The Canvas API is used to read the same font files used by the Python script. The script and any font files used must be served from the same domain (or support [CORS](http://en.wikipedia.org/wiki/Cross-origin_resource_sharing)) to prevent the ["tainted canvas" error](https://www.google.com/search?client=safari&rls=en&q=getImageData+tainted+canvas&ie=UTF-8&oe=UTF-8).
 
 ## Font format
 
